@@ -12,6 +12,7 @@ function codeImport(options = {}) {
     });
 
     for (const [node] of codes) {
+      // Get the name of file
       const fileMeta = (node.meta || '')
         .split(' ')
         .find(meta => meta.startsWith('file='));
@@ -20,8 +21,22 @@ function codeImport(options = {}) {
         continue;
       }
 
-      const filePath = fileMeta.slice('file='.length);
-      const fileAbsPath = path.resolve(file.dirname, filePath);
+      const filePath = fileMeta.slice('file='.length); // returns meta without "file=" e.g. ./index.js
+      const fileAbsPath = path.resolve(file.dirname, filePath); // change cwd to dirname for final builds
+
+      // Get the beginning and end line
+      const startMeta = (node.meta || '')
+        .split(' ')
+        .find(meta => meta.startsWith('start='));
+
+      const endMeta = (node.meta || '')
+        .split(' ')
+        .find(meta => meta.startsWith('end='));
+
+      if (startMeta && endMeta) {
+        startLine = startMeta.slice('start='.length);
+        endLine = endMeta.slice('end='.length);
+      }
 
       if (options.async) {
         promises.push(
@@ -31,16 +46,26 @@ function codeImport(options = {}) {
                 reject(err);
                 return;
               }
-
-              node.value = fileContent.trim();
+              startMeta && endMeta
+                ? (node.value = fileContent
+                    .split('\n')
+                    .slice(startLine - 1, endLine)
+                    .join('\n')
+                    .trim())
+                : (node.value = fileContent.trim());
               resolve();
             });
           })
         );
       } else {
         const fileContent = fs.readFileSync(fileAbsPath, 'utf8');
-
-        node.value = fileContent.trim();
+        startMeta && endMeta
+          ? (node.value = fileContent
+              .split('\n')
+              .slice(startLine - 1, endLine)
+              .join('\n')
+              .trim())
+          : (node.value = fileContent.trim());
       }
     }
 

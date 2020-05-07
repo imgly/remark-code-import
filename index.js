@@ -12,7 +12,7 @@ function codeImport(options = {}) {
     });
 
     for (const [node] of codes) {
-      // Get the name of file
+      // Get the name of file //
       const fileMeta = (node.meta || '')
         .split(' ')
         .find(meta => meta.startsWith('file='));
@@ -21,10 +21,10 @@ function codeImport(options = {}) {
         continue;
       }
 
-      const filePath = fileMeta.slice('file='.length); // returns meta without "file=" e.g. ./index.js
-      const fileAbsPath = path.resolve(file.dirname, filePath); // change cwd to dirname for final builds
+      const filePath = fileMeta.slice('file='.length);
+      const fileAbsPath = path.resolve(file.dirname, filePath);
 
-      // Get the beginning and end line
+      // Get the beginning and end line //
       const startMeta = (node.meta || '')
         .split(' ')
         .find(meta => meta.startsWith('start='));
@@ -38,6 +38,21 @@ function codeImport(options = {}) {
         endLine = endMeta.slice('end='.length);
       }
 
+      // Get the tag //
+      const tagMeta = (node.meta || '')
+        .split(' ')
+        .find(meta => meta.startsWith('tag='));
+
+      if (tagMeta) {
+        tag = tagMeta.slice('tag='.length);
+        regex = new RegExp(
+          '(?<=// <code_example tag="' +
+            tag +
+            '">\n)(.*?)(?=\\s*// </code_example>)',
+          'gs'
+        );
+      }
+
       if (options.async) {
         promises.push(
           new Promise((resolve, reject) => {
@@ -46,26 +61,32 @@ function codeImport(options = {}) {
                 reject(err);
                 return;
               }
-              startMeta && endMeta
-                ? (node.value = fileContent
-                    .split('\n')
-                    .slice(startLine - 1, endLine)
-                    .join('\n')
-                    .trim())
-                : (node.value = fileContent.trim());
+              if (startMeta && endMeta) {
+                node.value = fileContent
+                  .split('\n')
+                  .slice(startLine - 1, endLine)
+                  .join('\n');
+              } else if (tagMeta) {
+                node.value = fileContent.match(regex).toString();
+              } else {
+                node.value = fileContent.trim();
+              }
               resolve();
             });
           })
         );
       } else {
         const fileContent = fs.readFileSync(fileAbsPath, 'utf8');
-        startMeta && endMeta
-          ? (node.value = fileContent
-              .split('\n')
-              .slice(startLine - 1, endLine)
-              .join('\n')
-              .trim())
-          : (node.value = fileContent.trim());
+        if (startMeta && endMeta) {
+          node.value = fileContent
+            .split('\n')
+            .slice(startLine - 1, endLine)
+            .join('\n');
+        } else if (tagMeta) {
+          node.value = fileContent.match(regex).toString();
+        } else {
+          node.value = fileContent.trim();
+        }
       }
     }
 

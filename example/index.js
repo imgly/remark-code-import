@@ -17,12 +17,14 @@ const transform = code =>
     ],
   }).code;
 
+// <code_example tag="ola">
 const renderWithReact = async mdxCode => {
   const jsx = await mdx(mdxCode, {
     skipExport: true,
     remarkPlugins: [codeimport],
-    filepath: path.join(__dirname, 'example'),
+    filepath: path.join(__dirname, 'test'),
   });
+  // </code_example>
 
   const code = transform(jsx);
 
